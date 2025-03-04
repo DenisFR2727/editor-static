@@ -1,10 +1,11 @@
-import { FC, useState } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 import { Column } from "../column";
 import { Icons } from "../icons";
 import { ImagePlaceholder } from "../image-placeholder";
 import { Markdown } from "../markdown";
 import { Row } from "../row";
 import { Stage } from "../stage";
+import { SelectableContainer } from "../selectable-container";
 
 export const EditorStaticExample: FC = () => {
   const [rows, setRows] = useState([{ id: Date.now(), text: "# Untitled", columns: [{ id: Date.now(), text: "" }] }]);
@@ -13,6 +14,13 @@ export const EditorStaticExample: FC = () => {
     rowIndex: null,
     colIndex: null,
   });
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    if (selectedColumn && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [selectedColumn]);
 
   // Add new Row
   const addRow = () => {
@@ -197,13 +205,15 @@ export const EditorStaticExample: FC = () => {
                   </button>
                 </div>
               </div>
+
               <div className="textarea-field">
                 <textarea
+                  onChange={handleTextChange}
                   value={rows[selectedRowIndex].text}
+                  ref={textareaRef}
                   rows={8}
                   placeholder="Enter text"
-                  onChange={handleTextChange}
-                ></textarea>
+                />
               </div>
             </div>
           </>
