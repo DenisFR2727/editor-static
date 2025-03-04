@@ -9,14 +9,19 @@ import { Stage } from "../stage";
 export const EditorStaticExample: FC = () => {
   const [rows, setRows] = useState([{ id: 1, text: "# Untitled", columns: [{ id: 1 }] }]); // Стан для рядків
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null); // Стан для вибраного рядка
+
   // Add new Row
   const addRow = () => {
-    const newRow = { id: rows.length + 1, text: "", columns: [] };
-    setRows([...rows, newRow]);
+    setRows((prevRows) => {
+      const updatedRows = [...prevRows, { id: prevRows.length + 1, text: "", columns: [{ id: prevRows.length + 1 }] }];
+
+      return updatedRows;
+    });
+    setSelectedRowIndex(rows.length);
   };
 
   // Function select Row
-  const handleRowSelect = (index: number) => {
+  const handleRowSelect = (index: number): void => {
     setSelectedRowIndex(index === selectedRowIndex ? null : index);
     console.log(index);
   };
@@ -44,9 +49,9 @@ export const EditorStaticExample: FC = () => {
       <Stage onSelect={() => console.log("Stage selected")}>
         {rows.map((row, index) => (
           <Row key={row.id} onSelect={() => handleRowSelect(index)} selected={index === selectedRowIndex}>
-            {row.columns.map((column, colIndex) => (
+            {row.columns?.map((column, colIndex) => (
               <Column key={column.id}>
-                <Markdown className="text-align-center">{`#${row.text}`}</Markdown>
+                <Markdown className="text-align-center">{row.text}</Markdown>
               </Column>
             ))}
           </Row>
