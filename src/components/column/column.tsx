@@ -8,6 +8,6 @@ export interface ColumnProps {
   onSelect?(): void;
 }
 
-export const Column: FC<ColumnProps> = ({ selected, ...props }) => (
-  <SelectableContainer className={classNames("column", { selected })} {...props} />
+export const Column: FC<ColumnProps> = ({ selected, onSelect, ...props }) => (
+  <SelectableContainer className={classNames("column", { selected })} onClick={onSelect} {...props} />
 );

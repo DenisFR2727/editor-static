@@ -7,51 +7,79 @@ import { Row } from "../row";
 import { Stage } from "../stage";
 
 export const EditorStaticExample: FC = () => {
-  const [rows, setRows] = useState([{ id: 1, text: "# Untitled", columns: [{ id: 1 }] }]); // Стан для рядків
-  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null); // Стан для вибраного рядка
+  const [rows, setRows] = useState([{ id: Date.now(), text: "# Untitled", columns: [{ id: Date.now(), text: "" }] }]);
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null); // select state row
+  const [selectedColumn, setSelectedColumn] = useState<{ rowIndex: number | null; colIndex: number | null }>({
+    rowIndex: null,
+    colIndex: null,
+  });
 
   // Add new Row
   const addRow = () => {
     setRows((prevRows) => {
-      const updatedRows = [...prevRows, { id: prevRows.length + 1, text: "", columns: [{ id: prevRows.length + 1 }] }];
+      const updatedRows = [...prevRows, { id: Date.now(), text: "", columns: [{ id: Date.now(), text: "" }] }];
 
       return updatedRows;
     });
     setSelectedRowIndex(rows.length);
   };
 
-  // Function select Row
-  const handleRowSelect = (index: number): void => {
-    setSelectedRowIndex(index === selectedRowIndex ? null : index);
-    console.log(index);
+  // Function select Column
+  const handleColumnSelect = (rowIndex: number, colIndex: number): void => {
+    setSelectedRowIndex(rowIndex);
+    setSelectedColumn((prev) =>
+      prev.rowIndex === rowIndex && prev.colIndex === colIndex
+        ? { rowIndex: null, colIndex: null }
+        : { rowIndex, colIndex }
+    );
   };
+
   // Change text in row
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newTextRow = e.target.value;
-    if (selectedRowIndex === null) {
+    if (selectedRowIndex === null || selectedColumn === null) {
       return;
     }
 
     const updateRow = rows.map((row, index: number) =>
-      index === selectedRowIndex ? { ...row, text: `${newTextRow}` } : row
+      index === selectedRowIndex ? { ...row, text: newTextRow } : row
     );
+    // const updateColumn = rows.map((row, index: number) =>
+    //   index === selectedColumnIndex ? { ...row, columns: { text: newTextRow } } : row
+    // );
     setRows(updateRow);
+    // setRows({columns: updateColumn})
+
     console.log(updateRow);
   };
-  // const addColumn = (rowIndex: number) => {
-  //   const newRows = [...rows];
-  //   newRows[rowIndex].columns.push({ id: newRows[rowIndex].columns.length + 1 });
-  //   setRows(newRows);
-  // };
+
+  const addColumn = () => {
+    if (selectedRowIndex === null || selectedColumn === null) return;
+
+    setRows((prevRows) =>
+      prevRows.map((row, index) =>
+        index === selectedRowIndex
+          ? {
+              ...row,
+              columns: [...row.columns, { id: Date.now(), text: "" }],
+            }
+          : row
+      )
+    );
+  };
 
   return (
     <div className="editor">
-      <Stage onSelect={() => console.log("Stage selected")}>
-        {rows.map((row, index) => (
-          <Row key={row.id} onSelect={() => handleRowSelect(index)} selected={index === selectedRowIndex}>
+      <Stage selected={selectedRowIndex !== null} onSelect={() => setSelectedRowIndex(null)}>
+        {rows.map((row, rowIndex) => (
+          <Row key={row.id}>
             {row.columns?.map((column, colIndex) => (
-              <Column key={column.id}>
-                <Markdown className="text-align-center">{row.text}</Markdown>
+              <Column
+                key={column.id}
+                onSelect={() => handleColumnSelect(rowIndex, colIndex)}
+                selected={selectedColumn.rowIndex === rowIndex && selectedColumn.colIndex === colIndex}
+              >
+                <Markdown className="text-align-center">{row.text || column.text}</Markdown>
               </Column>
             ))}
           </Row>
@@ -132,7 +160,9 @@ export const EditorStaticExample: FC = () => {
             <div className="section">
               <div className="section-header">Row</div>
               <div className="actions">
-                <button className="action">Add column</button>
+                <button onClick={addColumn} className="action">
+                  Add column
+                </button>
               </div>
             </div>
 
