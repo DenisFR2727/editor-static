@@ -6,6 +6,7 @@ import { Row } from "../row";
 import { Stage } from "../stage";
 import { RowsTypes, SelectedColumnIndex } from "./type";
 import { useAddRowAndColumn, useChangeText, useImageURLChange, useSelectColumn, useTextAlign } from "./editor-hooks";
+import { ImagePlaceholder } from "../image-placeholder";
 
 const initialState = { id: Date.now(), text: "# Untitled", columns: [{ id: Date.now(), text: "" }] };
 
@@ -92,8 +93,12 @@ export const EditorStaticExample: FC = () => {
                 {column.text && column.text.startsWith("https") ? (
                   <img src={column.text} alt="img" style={{ maxWidth: "100%", maxHeight: "100%" }} />
                 ) : (
-                  <div style={{ width: "100%", textAlign: column.textAlign || "center" }}>
-                    <Markdown>{row.text || column.text}</Markdown>
+                  <div style={{ width: "100%", maxHeight: "100%", textAlign: column.textAlign || "center" }}>
+                    {openDownloadByURL && selectedColumn.rowIndex === rowIndex ? (
+                      <ImagePlaceholder />
+                    ) : (
+                      <Markdown>{row.text || column.text}</Markdown>
+                    )}
                   </div>
                 )}
               </Column>
