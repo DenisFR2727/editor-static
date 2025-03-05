@@ -7,11 +7,14 @@ import { Stage } from "../stage";
 import { RowsTypes, SelectedColumnIndex } from "./type";
 import { useAddRowAndColumn, useChangeText, useImageURLChange, useSelectColumn, useTextAlign } from "./editor-hooks";
 import { ImagePlaceholder } from "../image-placeholder";
+import useLocalStorageState from "use-local-storage-state";
 
 const initialState = { id: Date.now(), text: "# Untitled", columns: [{ id: Date.now(), text: "" }] };
 
 export const EditorStaticExample: FC = () => {
-  const [rows, setRows] = useState<RowsTypes[]>([initialState]);
+  const [rows, setRows] = useLocalStorageState<RowsTypes[]>("editor-rows", {
+    defaultValue: [initialState],
+  });
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
   const [selectedColumn, setSelectedColumn] = useState<SelectedColumnIndex>({
     rowIndex: null,

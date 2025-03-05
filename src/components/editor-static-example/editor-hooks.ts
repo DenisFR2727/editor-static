@@ -43,10 +43,9 @@ export const useAddRowAndColumn = ({
         : row
     );
     setRows(newColumn);
-    console.log(newColumn);
     setSelectedColumn({ rowIndex: selectedRowIndex, colIndex: rows[selectedRowIndex].columns.length });
     setImageURL("");
-    setOpenDownloadByURL(false);
+    // setOpenDownloadByURL(false);
   };
   return { addRow, addColumn };
 };
