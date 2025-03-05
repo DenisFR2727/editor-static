@@ -5,30 +5,40 @@ import { ImagePlaceholder } from "../image-placeholder";
 import { Markdown } from "../markdown";
 import { Row } from "../row";
 import { Stage } from "../stage";
+import { RowsTypes, SelectedColumnIndex } from "./type";
+
+const initialState = { id: Date.now(), text: "# Untitled", columns: [{ id: Date.now(), text: "" }] };
 
 export const EditorStaticExample: FC = () => {
-  const [rows, setRows] = useState([{ id: Date.now(), text: "# Untitled", columns: [{ id: Date.now(), text: "" }] }]);
+  const [rows, setRows] = useState<RowsTypes[]>([initialState]);
   const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null); // select state row
-  const [selectedColumn, setSelectedColumn] = useState<{ rowIndex: number | null; colIndex: number | null }>({
+  const [selectedColumn, setSelectedColumn] = useState<SelectedColumnIndex>({
     rowIndex: null,
     colIndex: null,
   });
+  const [openDownloadByURL, setOpenDownloadByURL] = useState<boolean>(false);
+  const [openTextArea, setOpenTextArea] = useState<boolean>(false);
+  const [imageURL, setImageURL] = useState<string>("");
+
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (selectedColumn && textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [selectedColumn]);
+    if (openDownloadByURL && imageInputRef.current) {
+      imageInputRef.current.focus();
+    }
+  }, [selectedColumn, rows, openDownloadByURL]);
 
   // Add new Row
-  const addRow = () => {
-    setRows((prevRows) => {
-      const updatedRows = [...prevRows, { id: Date.now(), text: "", columns: [{ id: Date.now(), text: "" }] }];
-
-      return updatedRows;
-    });
+  const addRow = (): void => {
+    const newRowIndex = rows.length;
+    setRows((prevRows) => [...prevRows, { id: Date.now(), text: "", columns: [{ id: Date.now(), text: "" }] }]);
     setSelectedRowIndex(rows.length);
+    setSelectedColumn({ rowIndex: newRowIndex, colIndex: 0 });
+    setOpenTextArea(true);
   };
 
   // Function select Column
@@ -42,7 +52,7 @@ export const EditorStaticExample: FC = () => {
   };
 
   // Change text in row
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
     const newTextRow = e.target.value;
     if (selectedRowIndex === null || selectedColumn === null) {
       return;
@@ -55,7 +65,7 @@ export const EditorStaticExample: FC = () => {
             text: "",
             columns: row.columns.map((column, colIndex) => {
               if (colIndex === selectedColumn.colIndex) {
-                return { ...column, text: e.target.value };
+                return { ...column, text: newTextRow };
               }
               return column;
             }),
@@ -64,22 +74,61 @@ export const EditorStaticExample: FC = () => {
         return row;
       })
     );
-    // console.log(updatedRows); // Для перевірки
   };
 
+  const handleImageURLChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const newURL = e.target.value;
+    setImageURL(newURL);
+
+    if (selectedRowIndex === null || selectedColumn.colIndex === null) return;
+
+    setRows((prevRows) =>
+      prevRows.map((row, rowIndex) => {
+        if (rowIndex === selectedRowIndex) {
+          return {
+            ...row,
+            columns: row.columns.map((column, colIndex) => {
+              if (colIndex === selectedColumn.colIndex) {
+                return { ...column, text: imageURL };
+              }
+              return column;
+            }),
+          };
+        }
+        return row;
+      })
+    );
+  };
   const addColumn = () => {
     if (selectedRowIndex === null || selectedColumn === null) return;
     const newColumn = rows.map((row, index) =>
       index === selectedRowIndex
         ? {
             ...row,
+
             columns: [...row.columns, { id: Date.now(), text: "" }],
           }
         : row
     );
     setRows(newColumn);
-  };
+    setSelectedColumn({ rowIndex: selectedRowIndex, colIndex: rows[selectedRowIndex].columns.length });
 
+    setOpenDownloadByURL(false);
+  };
+  const selectImageLoading = (): void => {
+    setOpenDownloadByURL(true);
+    setOpenTextArea(false);
+    if (imageInputRef.current) {
+      imageInputRef.current.focus();
+    }
+  };
+  const selectTextArea = (): void => {
+    setOpenDownloadByURL(false);
+    setOpenTextArea(true);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
   return (
     <div className="editor">
       <Stage selected={selectedRowIndex !== null} onSelect={() => setSelectedRowIndex(null)}>
@@ -91,23 +140,17 @@ export const EditorStaticExample: FC = () => {
                 onSelect={() => handleColumnSelect(rowIndex, colIndex)}
                 selected={selectedColumn.rowIndex === rowIndex && selectedColumn.colIndex === colIndex}
               >
-                <Markdown className="text-align-center">{row.text || column.text}</Markdown>
+                {column.text && column.text.startsWith("https") ? (
+                  <img src={column.text} alt="img" style={{ maxWidth: "100%", maxHeight: "100%" }} />
+                ) : (
+                  <Markdown className="text-align-center">{row.text || column.text}</Markdown>
+                )}
+                {/* <Markdown className="text-align-center">{row.text || column.text}</Markdown> */}
               </Column>
             ))}
           </Row>
         ))}
 
-        {/* <Row>
-          <Column>
-            <img src="/images/linnea-sandbakk-HQqIOc8oYro.jpg" alt="" />
-          </Column>
-          <Column>
-            <img src="/images/jordan-whitt-EerxztHCjM8.jpg" alt="" />
-          </Column>
-          <Column>
-            <img src="/images/donnie-ray-crisp-cpL9skvSypI.jpg" alt="" />
-          </Column>
-        </Row> */}
         {/* <Row>
         <Column>
           <Markdown className="text-align-left">
@@ -183,10 +226,10 @@ export const EditorStaticExample: FC = () => {
               <div className="button-group-field">
                 <label>Contents</label>
                 <div className="button-group">
-                  <button className="selected">
+                  <button className={openTextArea ? "selected" : ""} onClick={selectTextArea}>
                     <Icons.Text />
                   </button>
-                  <button>
+                  <button className={openDownloadByURL ? "selected" : ""} onClick={selectImageLoading}>
                     <Icons.Image />
                   </button>
                 </div>
@@ -210,30 +253,39 @@ export const EditorStaticExample: FC = () => {
                 </div>
               </div>
 
-              <div className="textarea-field">
-                <textarea
-                  onChange={handleTextChange}
-                  value={
-                    selectedRowIndex !== null && selectedColumn.colIndex !== null
-                      ? rows[selectedRowIndex].text || rows[selectedRowIndex].columns[selectedColumn.colIndex]?.text
-                      : ""
-                  }
-                  ref={textareaRef}
-                  rows={8}
-                  placeholder="Enter text"
-                />
-              </div>
+              {openTextArea && (
+                <div className="textarea-field">
+                  <textarea
+                    onChange={handleTextChange}
+                    value={
+                      selectedRowIndex !== null && selectedColumn.colIndex !== null
+                        ? rows[selectedRowIndex].text || rows[selectedRowIndex].columns[selectedColumn.colIndex]?.text
+                        : ""
+                    }
+                    ref={textareaRef}
+                    rows={8}
+                    placeholder="Enter text"
+                  />
+                </div>
+              )}
             </div>
           </>
         )}
-
-        {/* <div className="section">
-          <div className="section-header">Image</div>
-          <div className="text-field">
-            <label htmlFor="image-url">URL</label>
-            <input id="image-url" type="text" />
+        {openDownloadByURL && (
+          <div className="section">
+            <div className="section-header">Image</div>
+            <div className="text-field">
+              <label htmlFor="image-url">URL</label>
+              <input
+                ref={imageInputRef}
+                id="image-url"
+                type="text"
+                value={imageURL || ""}
+                onChange={handleImageURLChange}
+              />
+            </div>
           </div>
-        </div> */}
+        )}
       </div>
     </div>
   );
