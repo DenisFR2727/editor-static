@@ -53,7 +53,7 @@ export const EditorStaticExample: FC = () => {
     if (selectedColumn.rowIndex !== null && selectedColumn.colIndex !== null) {
       const timer = setTimeout(() => {
         setSelectedColumn({ rowIndex: null, colIndex: null });
-      }, 5000);
+      }, 15000);
 
       return () => clearTimeout(timer);
     }
