@@ -5,7 +5,6 @@ import { ImagePlaceholder } from "../image-placeholder";
 import { Markdown } from "../markdown";
 import { Row } from "../row";
 import { Stage } from "../stage";
-import { SelectableContainer } from "../selectable-container";
 
 export const EditorStaticExample: FC = () => {
   const [rows, setRows] = useState([{ id: Date.now(), text: "# Untitled", columns: [{ id: Date.now(), text: "" }] }]);
@@ -48,32 +47,37 @@ export const EditorStaticExample: FC = () => {
     if (selectedRowIndex === null || selectedColumn === null) {
       return;
     }
-
-    const updateRow = rows.map((row, index: number) =>
-      index === selectedRowIndex ? { ...row, text: newTextRow } : row
+    setRows((prevRows) =>
+      prevRows.map((row, rowIndex) => {
+        if (rowIndex === selectedRowIndex) {
+          return {
+            ...row,
+            text: "",
+            columns: row.columns.map((column, colIndex) => {
+              if (colIndex === selectedColumn.colIndex) {
+                return { ...column, text: e.target.value };
+              }
+              return column;
+            }),
+          };
+        }
+        return row;
+      })
     );
-    // const updateColumn = rows.map((row, index: number) =>
-    //   index === selectedColumnIndex ? { ...row, columns: { text: newTextRow } } : row
-    // );
-    setRows(updateRow);
-    // setRows({columns: updateColumn})
-
-    console.log(updateRow);
+    // console.log(updatedRows); // Для перевірки
   };
 
   const addColumn = () => {
     if (selectedRowIndex === null || selectedColumn === null) return;
-
-    setRows((prevRows) =>
-      prevRows.map((row, index) =>
-        index === selectedRowIndex
-          ? {
-              ...row,
-              columns: [...row.columns, { id: Date.now(), text: "" }],
-            }
-          : row
-      )
+    const newColumn = rows.map((row, index) =>
+      index === selectedRowIndex
+        ? {
+            ...row,
+            columns: [...row.columns, { id: Date.now(), text: "" }],
+          }
+        : row
     );
+    setRows(newColumn);
   };
 
   return (
@@ -209,7 +213,11 @@ export const EditorStaticExample: FC = () => {
               <div className="textarea-field">
                 <textarea
                   onChange={handleTextChange}
-                  value={rows[selectedRowIndex].text}
+                  value={
+                    selectedRowIndex !== null && selectedColumn.colIndex !== null
+                      ? rows[selectedRowIndex].text || rows[selectedRowIndex].columns[selectedColumn.colIndex]?.text
+                      : ""
+                  }
                   ref={textareaRef}
                   rows={8}
                   placeholder="Enter text"
