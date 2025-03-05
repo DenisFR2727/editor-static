@@ -1,27 +1,44 @@
 import { FC, useEffect, useRef, useState } from "react";
 import { Column } from "../column";
 import { Icons } from "../icons";
-import { ImagePlaceholder } from "../image-placeholder";
 import { Markdown } from "../markdown";
 import { Row } from "../row";
 import { Stage } from "../stage";
 import { RowsTypes, SelectedColumnIndex } from "./type";
+import { useAddRowAndColumn, useChangeText, useImageURLChange, useSelectColumn, useTextAlign } from "./editor-hooks";
 
 const initialState = { id: Date.now(), text: "# Untitled", columns: [{ id: Date.now(), text: "" }] };
 
 export const EditorStaticExample: FC = () => {
   const [rows, setRows] = useState<RowsTypes[]>([initialState]);
-  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null); // select state row
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number | null>(null);
   const [selectedColumn, setSelectedColumn] = useState<SelectedColumnIndex>({
     rowIndex: null,
     colIndex: null,
   });
   const [openDownloadByURL, setOpenDownloadByURL] = useState<boolean>(false);
   const [openTextArea, setOpenTextArea] = useState<boolean>(false);
-  const [imageURL, setImageURL] = useState<string>("");
+  const [imageURL, setImageURL] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+
+  const { addRow, addColumn } = useAddRowAndColumn({
+    setRows,
+    rows,
+    setSelectedRowIndex,
+    setSelectedColumn,
+    setOpenTextArea,
+    openDownloadByURL,
+    setOpenDownloadByURL,
+    selectedRowIndex,
+    selectedColumn,
+    setImageURL,
+  });
+  const { handleColumnSelect } = useSelectColumn({ setSelectedRowIndex, setSelectedColumn, setOpenTextArea });
+  const { handleTextChange } = useChangeText({ selectedRowIndex, selectedColumn, setRows });
+  const { handleImageURLChange } = useImageURLChange({ setImageURL, selectedRowIndex, selectedColumn, setRows });
+  const { handleTextAlignChange } = useTextAlign({ selectedRowIndex, selectedColumn, setRows });
 
   useEffect(() => {
     if (selectedColumn && textareaRef.current) {
@@ -32,92 +49,19 @@ export const EditorStaticExample: FC = () => {
     }
   }, [selectedColumn, rows, openDownloadByURL]);
 
-  // Add new Row
-  const addRow = (): void => {
-    const newRowIndex = rows.length;
-    setRows((prevRows) => [...prevRows, { id: Date.now(), text: "", columns: [{ id: Date.now(), text: "" }] }]);
-    setSelectedRowIndex(rows.length);
-    setSelectedColumn({ rowIndex: newRowIndex, colIndex: 0 });
-    setOpenTextArea(true);
-  };
+  useEffect(() => {
+    if (selectedColumn.rowIndex !== null && selectedColumn.colIndex !== null) {
+      const timer = setTimeout(() => {
+        setSelectedColumn({ rowIndex: null, colIndex: null });
+      }, 5000);
 
-  // Function select Column
-  const handleColumnSelect = (rowIndex: number, colIndex: number): void => {
-    setSelectedRowIndex(rowIndex);
-    setSelectedColumn((prev) =>
-      prev.rowIndex === rowIndex && prev.colIndex === colIndex
-        ? { rowIndex: null, colIndex: null }
-        : { rowIndex, colIndex }
-    );
-  };
-
-  // Change text in row
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
-    const newTextRow = e.target.value;
-    if (selectedRowIndex === null || selectedColumn === null) {
-      return;
+      return () => clearTimeout(timer);
     }
-    setRows((prevRows) =>
-      prevRows.map((row, rowIndex) => {
-        if (rowIndex === selectedRowIndex) {
-          return {
-            ...row,
-            text: "",
-            columns: row.columns.map((column, colIndex) => {
-              if (colIndex === selectedColumn.colIndex) {
-                return { ...column, text: newTextRow };
-              }
-              return column;
-            }),
-          };
-        }
-        return row;
-      })
-    );
-  };
-
-  const handleImageURLChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    const newURL = e.target.value;
-    setImageURL(newURL);
-
-    if (selectedRowIndex === null || selectedColumn.colIndex === null) return;
-
-    setRows((prevRows) =>
-      prevRows.map((row, rowIndex) => {
-        if (rowIndex === selectedRowIndex) {
-          return {
-            ...row,
-            columns: row.columns.map((column, colIndex) => {
-              if (colIndex === selectedColumn.colIndex) {
-                return { ...column, text: imageURL };
-              }
-              return column;
-            }),
-          };
-        }
-        return row;
-      })
-    );
-  };
-  const addColumn = () => {
-    if (selectedRowIndex === null || selectedColumn === null) return;
-    const newColumn = rows.map((row, index) =>
-      index === selectedRowIndex
-        ? {
-            ...row,
-
-            columns: [...row.columns, { id: Date.now(), text: "" }],
-          }
-        : row
-    );
-    setRows(newColumn);
-    setSelectedColumn({ rowIndex: selectedRowIndex, colIndex: rows[selectedRowIndex].columns.length });
-
-    setOpenDownloadByURL(false);
-  };
+  }, [selectedColumn]);
   const selectImageLoading = (): void => {
     setOpenDownloadByURL(true);
     setOpenTextArea(false);
+
     if (imageInputRef.current) {
       imageInputRef.current.focus();
     }
@@ -128,7 +72,12 @@ export const EditorStaticExample: FC = () => {
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
+    if (openTextArea) {
+      textareaRef.current?.focus();
+    }
+    setImageURL("");
   };
+
   return (
     <div className="editor">
       <Stage selected={selectedRowIndex !== null} onSelect={() => setSelectedRowIndex(null)}>
@@ -143,64 +92,15 @@ export const EditorStaticExample: FC = () => {
                 {column.text && column.text.startsWith("https") ? (
                   <img src={column.text} alt="img" style={{ maxWidth: "100%", maxHeight: "100%" }} />
                 ) : (
-                  <Markdown className="text-align-center">{row.text || column.text}</Markdown>
+                  <div style={{ width: "100%", textAlign: column.textAlign || "center" }}>
+                    <Markdown>{row.text || column.text}</Markdown>
+                  </div>
                 )}
-                {/* <Markdown className="text-align-center">{row.text || column.text}</Markdown> */}
               </Column>
             ))}
           </Row>
         ))}
-
-        {/* <Row>
-        <Column>
-          <Markdown className="text-align-left">
-            Photo by [Linnea Sandbakk](https://unsplash.com/photos/HQqIOc8oYro)
-          </Markdown>
-        </Column>
-        <Column>
-          <Markdown className="text-align-center">
-            Photo by [Jordan Whitt](https://unsplash.com/photos/EerxztHCjM8)
-          </Markdown>
-        </Column>
-        <Column>
-          <Markdown className="text-align-right">
-            Photo by [Donnie Ray Crisp](https://unsplash.com/photos/cpL9skvSypI)
-          </Markdown>
-        </Column>
-      </Row> */}
-        {/* <Row>
-        <Column>
-          <Markdown>
-            “Immensely powerful though we are today, it’s equally clear that we’re going to be even more powerful
-            tomorrow. And what’s more there will be greater compulsion upon us to use our power as the number of human
-            beings on Earth increases still further. Clearly we could devastate the world. As far as we know, the Earth
-            is the only place in the universe where there is life. Its continued survival now rests in our hands.”
-          </Markdown>
-        </Column>
-      </Row> */}
-        {/* <Row>
-        <Column>
-          <Markdown className="text-align-right">— David Attenborough</Markdown>
-        </Column>
-      </Row>
-      <Row /> */}
-        {/* <Row selected>
-        <Column>Selected row</Column>
-      </Row> */}
-        {/* <Row>
-        <Column selected>Selected column</Column>
-        <Column>
-          <Markdown>{"**Bold text**\n\n*Italic text*"}</Markdown>
-        </Column>
-        <Column>
-          <Markdown>Hippopotomonstrosesquippedaliophobia</Markdown>
-        </Column>
-        <Column>
-          <ImagePlaceholder />
-        </Column>
-      </Row> */}
       </Stage>
-
       <div className="properties">
         <div className="section">
           <div className="section-header">Page</div>
@@ -235,25 +135,48 @@ export const EditorStaticExample: FC = () => {
                 </div>
               </div>
             </div>
-
-            <div className="section">
-              <div className="section-header">Text</div>
-              <div className="button-group-field">
-                <label>Alignment</label>
-                <div className="button-group">
-                  <button className="selected">
-                    <Icons.TextAlignLeft />
-                  </button>
-                  <button>
-                    <Icons.TextAlignCenter />
-                  </button>
-                  <button>
-                    <Icons.TextAlignRight />
-                  </button>
+            {openTextArea && (
+              <div className="section">
+                <div className="section-header">Text</div>
+                <div className="button-group-field">
+                  <label>Alignment</label>
+                  <div className="button-group">
+                    <button
+                      className={
+                        selectedColumn?.colIndex !== null &&
+                        rows[selectedRowIndex].columns[selectedColumn.colIndex]?.textAlign === "left"
+                          ? "selected"
+                          : ""
+                      }
+                      onClick={() => handleTextAlignChange("left")}
+                    >
+                      <Icons.TextAlignLeft />
+                    </button>
+                    <button
+                      className={
+                        selectedColumn?.colIndex !== null &&
+                        rows[selectedRowIndex].columns[selectedColumn.colIndex]?.textAlign === "center"
+                          ? "selected"
+                          : ""
+                      }
+                      onClick={() => handleTextAlignChange("center")}
+                    >
+                      <Icons.TextAlignCenter />
+                    </button>
+                    <button
+                      className={
+                        selectedColumn?.colIndex !== null &&
+                        rows[selectedRowIndex].columns[selectedColumn.colIndex]?.textAlign === "right"
+                          ? "selected"
+                          : ""
+                      }
+                      onClick={() => handleTextAlignChange("right")}
+                    >
+                      <Icons.TextAlignRight />
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              {openTextArea && (
                 <div className="textarea-field">
                   <textarea
                     onChange={handleTextChange}
@@ -267,8 +190,8 @@ export const EditorStaticExample: FC = () => {
                     placeholder="Enter text"
                   />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </>
         )}
         {openDownloadByURL && (
@@ -290,3 +213,10 @@ export const EditorStaticExample: FC = () => {
     </div>
   );
 };
+
+// Photo by [Jordan Whitt](https://unsplash.com/photos/EerxztHCjM8)
+
+// “Immensely powerful though we are today, it’s equally clear that we’re going to be even more powerful
+// tomorrow. And what’s more there will be greater compulsion upon us to use our power as the number of human
+// beings on Earth increases still further. Clearly we could devastate the world. As far as we know, the Earth
+// is the only place in the universe where there is life. Its continued survival now rests in our hands.”
